@@ -1,7 +1,7 @@
 import { URL } from "url";
 import path from "path";
 
-import { App, DataAdapter } from "obsidian";
+import { App, DataAdapter, TFile,normalizePath } from "obsidian";
 
 import {
   isUrl,
@@ -17,12 +17,11 @@ import {
 } from "./config";
 import { linkHashes } from "./linksHash";
 
-export function imageTagProcessor(app: App, mediaDir: string) {
+export function imageTagProcessor(app: App, mediaDir: string, file:TFile, useRelativePath:boolean) {
   async function processImageTag(match: string, anchor: string, link: string) {
     if (!isUrl(link)) {
       return match;
     }
-
     try {
       const fileData = await downloadImage(link);
 
@@ -38,13 +37,17 @@ export function imageTagProcessor(app: App, mediaDir: string) {
             link,
             fileData
           );
-
           if (needWrite && fileName) {
             await app.vault.createBinary(fileName, fileData);
           }
-
           if (fileName) {
-            return `![${anchor}](${fileName})`;
+            if(useRelativePath){
+              let relativePath=path.relative(path.dirname(file.path),fileName)
+              return `![${anchor}](${normalizePath(relativePath)})`;
+            }else{
+              return `![${anchor}](${fileName})`;
+            }
+            
           } else {
             return match;
           }

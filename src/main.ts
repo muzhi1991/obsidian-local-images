@@ -6,6 +6,7 @@ import {
   Setting,
   TFile,
 } from "obsidian";
+import * as Path from 'path';
 import safeRegex from "safe-regex";
 
 import { imageTagProcessor } from "./contentProcessor";
@@ -28,16 +29,17 @@ export default class LocalImagesPlugin extends Plugin {
   private async proccessPage(file: TFile, silent = false) {
     // const content = await this.app.vault.read(file);
     const content = await this.app.vault.cachedRead(file);
-
-    await this.ensureFolderExists(this.settings.mediaRootDirectory);
-
+    let resolvedSubFolderName = this.settings.mediaRootDirectory.replace(/\${filename}/g, file.basename);
+    let mdFolderPath: string = Path.dirname(file.path);
+    await this.ensureFolderExists(resolvedSubFolderName);
+    
     const cleanedContent = this.settings.cleanContent
       ? cleanContent(content)
       : content;
     const fixedContent = await replaceAsync(
       cleanedContent,
       EXTERNAL_MEDIA_LINK_PATTERN,
-      imageTagProcessor(this.app, this.settings.mediaRootDirectory)
+      imageTagProcessor(this.app, resolvedSubFolderName, file, this.settings.useRelativePath)
     );
 
     if (content != fixedContent) {
@@ -79,7 +81,6 @@ export default class LocalImagesPlugin extends Plugin {
       if (file.path.match(includeRegex)) {
         if (notice) {
           // setMessage() is undeclared but factically existing, so ignore the TS error
-          // @ts-expect-error
           notice.setMessage(
             `Local Images: Processing \n"${file.path}" \nPage ${index} of ${pagesCount}`
           );
@@ -88,7 +89,6 @@ export default class LocalImagesPlugin extends Plugin {
       }
     }
     if (notice) {
-      // @ts-expect-error
       notice.setMessage(`Local Images: ${pagesCount} pages were processed.`);
 
       setTimeout(() => {
@@ -123,6 +123,22 @@ export default class LocalImagesPlugin extends Plugin {
         }
       });
     });
+
+    this.app.workspace.on(
+      "editor-paste",
+      (evt, editor, markdownView) => {
+                console.log("here2");
+                const content=evt.clipboardData.getData('text/plain');
+                //files = evt.clipboardData.files;
+                //console.log(files);
+                //content = yield this.app.vault.cachedRead(file);
+                console.log(content);
+                if (ANY_URL_PATTERN.test(content)) {
+                    console.log("here3");
+                   this.enqueueActivePage();
+                }
+      }
+    );
 
     this.setupQueueInterval();
 
@@ -330,12 +346,24 @@ class SettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Media folder")
-      .setDesc("Folder to keep all downloaded media files.")
+      .setDesc("Folder to keep all downloaded media files. ${filename} use filename as media folder")
       .addText((text) =>
         text
           .setValue(this.plugin.settings.mediaRootDirectory)
           .onChange(async (value) => {
             this.plugin.settings.mediaRootDirectory = value;
+            await this.plugin.saveSettings();
+          })
+      );
+
+    new Setting(containerEl)
+      .setName("Relative Path")
+      .setDesc("Insert image path use relative path")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.useRelativePath)
+          .onChange(async (value) => {
+            this.plugin.settings.useRelativePath = value;
             await this.plugin.saveSettings();
           })
       );
