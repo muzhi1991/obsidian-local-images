@@ -67,3 +67,10 @@ export function pathJoin(dir: string, subpath: string): string {
   // it seems that obsidian do not understand paths with backslashes in Windows, so turn them into forward slashes
   return result.replace(/\\/g, "/");
 }
+
+
+export function normalizePathForLink(path: string): string {
+  path = path.replace(/\\/gi, "/"); //replace \ to /
+  path = path.replace(/ /gi, "%20"); //replace space to %20
+  return path;
+}

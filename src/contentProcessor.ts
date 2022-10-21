@@ -9,6 +9,7 @@ import {
   fileExtByContent,
   cleanFileName,
   pathJoin,
+  normalizePathForLink,
 } from "./utils";
 import {
   FILENAME_TEMPLATE,
@@ -16,6 +17,9 @@ import {
   FILENAME_ATTEMPTS,
 } from "./config";
 import { linkHashes } from "./linksHash";
+
+
+
 
 export function imageTagProcessor(app: App, mediaDir: string, file:TFile, useRelativePath:boolean) {
   async function processImageTag(match: string, anchor: string, link: string) {
@@ -43,9 +47,9 @@ export function imageTagProcessor(app: App, mediaDir: string, file:TFile, useRel
           if (fileName) {
             if(useRelativePath){
               let relativePath=path.relative(path.dirname(file.path),fileName)
-              return `![${anchor}](${normalizePath(relativePath)})`;
+              return `![${anchor}](${normalizePathForLink(relativePath)})`;
             }else{
-              return `![${anchor}](${fileName})`;
+              return `![${anchor}](${normalizePathForLink(fileName)})`;
             }
             
           } else {
